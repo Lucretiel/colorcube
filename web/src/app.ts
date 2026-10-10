@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { BlobSet, makeSharedBlobUniforms } from './blobs';
 import { gridToByte, loadLevel, majorityLabel, toHex, type LevelData, type LevelInfo, type LevelsFile } from './data';
 import { Labels3D, type LabelSpot } from './labels3d';
+import { HandlePlacer } from './handleSpot';
 import { Map2D, measureNames } from './map2d';
 import type { NameMetric } from './labeler';
 import { buildPlaneGeometry, hueDir, mapToGrid, SliceState, type Orientation } from './slice';
@@ -383,6 +384,7 @@ export class App {
   private applyVisibility() {
     this.blobs?.setNameVisibility(this.nameVisible);
     this.updateNameMask();
+    this.placeHandle();
     this.labels3dDirty = true;
     this.overlayDirty = true; // map labels of hidden names are dimmed in the Canvas2D overlay
     this.emitState();
@@ -496,18 +498,8 @@ export class App {
     lp.needsUpdate = true;
     lg.setDrawRange(0, n);
     this.hasPolygon = pts.length > 0;
-    // handle at polygon centroid; Hues mode: out on the hue side (the centroid is on the axis, which has no
-    // leverage for a rotating drag)
-    if (pts.length) {
-      const c = pts.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
-      if (this.slice.orientation === 'hues') {
-        const h = hueDir(this.slice.hue), o = this.slice.center();
-        const reach = Math.max(...pts.map((p) => p.clone().sub(o).dot(h)));
-        c.copy(o).addScaledVector(h, 0.6 * reach);
-      }
-      this.handle.position.copy(c);
-      this.handle.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), this.slice.normal);
-    }
+    this.polygon = pts;
+    this.placeHandle();
     this.slice.clipVec4(this.shared.uClip.value);
     this.map.setFaces(faces, this.metrics, prevOrientation === this.slice.orientation);
     this.map.axes = this.slice.axisNotes().map((a) => ({ edge: a.edge as 'bottom' | 'left', label: a.label, from: a.from, to: a.to }));
@@ -517,6 +509,31 @@ export class App {
     this.emit();
   }
   private lastOrientation: Orientation | null = null;
+  private polygon: THREE.Vector3[] = [];
+  private handlePlacer = new HandlePlacer();
+
+  /**
+   * Handle at the polygon centroid; Hues mode: out on the hue side (the centroid is on the axis, which has no
+   * leverage for a rotating drag). With names hidden, the nearest spot to that whose drag path never covers a
+   * visible name, if there is one.
+   */
+  private placeHandle() {
+    const pts = this.polygon;
+    if (!pts.length) return;
+    const c = pts.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
+    if (this.slice.orientation === 'hues') {
+      const h = hueDir(this.slice.hue), o = this.slice.center();
+      const reach = Math.max(...pts.map((p) => p.clone().sub(o).dot(h)));
+      c.copy(o).addScaledVector(h, 0.6 * reach);
+    }
+    if (this.anyHidden && this.level) {
+      const spot = this.handlePlacer.place(this.level.labels, this.nameVisible, this.slice, c);
+      if (spot) c.copy(spot);
+    }
+    this.handle.position.copy(c);
+    this.handle.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), this.slice.normal);
+    this.dirty = true;
+  }
 
   // ---------------------------------------------------------------- picking
   /**

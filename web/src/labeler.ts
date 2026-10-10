@@ -201,7 +201,7 @@ export function computeLabels(volume: Uint8Array, req: LabelRequest): LabelResul
 }
 
 /** In-place 2D squared Euclidean distance transform (Felzenszwalb & Huttenlocher). */
-function edt2d(D: Float64Array, W: number, H: number) {
+export function edt2d(D: Float64Array, W: number, H: number) {
   const m = Math.max(W, H);
   const f = new Float64Array(m), d = new Float64Array(m), z = new Float64Array(m + 1);
   const v = new Int32Array(m);

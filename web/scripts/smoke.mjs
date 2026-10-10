@@ -368,7 +368,63 @@ async function run(browser, assets) {
   sel.map.length >= 10 && selErr(sel.map) <= 2
     ? ok(`selection map: hidden regions unchanged (opaque, dimmed; ${sel.map.length} samples, max error ${selErr(sel.map)})`)
     : fail(`selection map: hidden regions ${JSON.stringify(sel.map.slice(0, 3))}`);
-  await page.evaluate(() => window.__cc.app.showAll());
+  // --- with a selection, the drag handle avoids the selected names along its whole drag path
+  const hd = await page.evaluate(() => {
+    const a = window.__cc.app, s = a.slice, V3 = s.normal.constructor;
+    const C = new V3(128, 128, 128), G = new V3(1, 1, 1).normalize();
+    const hits = (pts) => pts.filter((p) => [p.x, p.y, p.z].every((c) => c >= 0.5 && c <= 255.5) && a.nameVisible[a.labelAt(p.x, p.y, p.z)]).length;
+    // the handle's footprint in its plane: the ring (radius 11) and everything inside it
+    const disk = (c, u, v) => {
+      const out = [c.clone()];
+      for (const r of [4, 8, 11]) for (let k = 0; k < 16; k++) { const t = (k / 16) * 2 * Math.PI; out.push(c.clone().addScaledVector(u, r * Math.cos(t)).addScaledVector(v, r * Math.sin(t))); }
+      return out;
+    };
+    a.showAll(); a.setOrientation('gray'); a.setSliderValue(383); a.syncSlice();
+    const def = a.handle.position.clone();
+    const t0 = performance.now();
+    a.solo(a.labelAt(128, 128, 128));
+    const ms = performance.now() - t0;
+    a.syncSlice();
+    // grey: the handle slides along the normal; sweep its footprint through the whole cube
+    const h = a.handle.position.clone(), n = s.normal.clone();
+    let grey = 0;
+    for (let d = -450; d <= 450; d += 2) grey += hits(disk(h.clone().addScaledVector(n, d), s.U, s.V));
+    const onPlane = Math.abs(h.clone().sub(C).dot(n) - s.offset);
+    const greyMoved = h.distanceTo(def);
+    const defHits = hits(disk(def, s.U, s.V));
+    // near the black and white corners the slice is a tiny triangle: the handle keeps its spot in the plane
+    const inPlane = () => { const r = a.handle.position.clone().sub(s.center()); return [r.dot(s.U), r.dot(s.V)]; };
+    const uv0 = inPlane();
+    let drift = 0;
+    for (const v of [600, 735, 760, 150, 30, 5, 383]) {
+      a.setSliderValue(v); a.syncSlice();
+      const [u, w] = inPlane();
+      drift = Math.max(drift, Math.hypot(u - uv0[0], w - uv0[1]));
+    }
+    // hues: the handle circles the gray axis; sweep its footprint all the way round
+    a.setOrientation('hues'); a.setSliderValue(30); a.syncSlice();
+    const hh = a.handle.position.clone().sub(C), z = hh.dot(G), rho = hh.clone().addScaledVector(G, -z).length();
+    const e1 = hh.clone().addScaledVector(G, -z).normalize(), e2 = G.clone().cross(e1);
+    let hues = 0;
+    for (let k = 0; k < 180; k++) {
+      const t = (k / 180) * 2 * Math.PI, radial = e1.clone().multiplyScalar(Math.cos(t)).addScaledVector(e2, Math.sin(t));
+      hues += hits(disk(C.clone().addScaledVector(G, z).addScaledVector(radial, rho), radial, G));
+    }
+    // clearing the selection puts the handle back
+    a.setOrientation('gray'); a.setSliderValue(383); a.showAll(); a.syncSlice();
+    const back = a.handle.position.distanceTo(def);
+    return { ms, grey, onPlane, greyMoved, defHits, drift, hues, rho, back };
+  });
+  hd.defHits > 0 && hd.greyMoved > 5 && hd.grey === 0 && hd.onPlane < 1e-6
+    ? ok(`handle (grey): moved ${hd.greyMoved.toFixed(0)} units off the blocked default, drag path clear of the selection (placed in ${hd.ms.toFixed(0)} ms)`)
+    : fail(`handle (grey): ${JSON.stringify(hd)}`);
+  hd.drift < 1e-6 ? ok('handle (grey): keeps its spot as the slice shrinks towards the black and white corners') : fail(`handle (grey) moved ${hd.drift.toFixed(1)} units as the slice shrank`);
+  hd.hues === 0 ? ok(`handle (hues): full circle at radius ${hd.rho.toFixed(0)} clear of the selection`) : fail(`handle (hues): ${hd.hues} samples on the selection ${JSON.stringify(hd)}`);
+  hd.back < 1e-6 ? ok('handle: back at the default when the selection is cleared') : fail(`handle not back at default (${hd.back})`);
+  await page.evaluate(() => { const a = window.__cc.app; a.solo(a.labelAt(128, 128, 128)); a.setOrientation('gray'); a.setSliderValue(383); });
+  await settle(page);
+  await page.screenshot({ path: join(SHOTS, `${tag}-04c-selection-handle.png`) });
+  await page.evaluate(() => { const a = window.__cc.app; a.showAll(); a.setOrientation('b'); a.setSliderValue(128); });
 
   // --- collapse explode, slice orientations
   await page.evaluate(() => window.__cc.app.setExplode(0, false));
