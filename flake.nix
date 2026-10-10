@@ -18,7 +18,7 @@
           ]);
         in {
           default = pkgs.mkShell {
-            packages = [ python pkgs.nodejs_22 ];
+            packages = [ python pkgs.nodejs_24 ];
             shellHook = ''
               export PYTHONDONTWRITEBYTECODE=1
               export COLORCUBE_DEVSHELL=1

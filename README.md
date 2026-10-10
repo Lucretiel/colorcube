@@ -54,7 +54,7 @@ calibration numbers.
 
 | Path | What |
 | --- | --- |
-| `flake.nix` | dev shell: python3 (numpy, scipy, scikit-image, pillow), nodejs 22 |
+| `flake.nix` | dev shell: python3 (numpy, scipy, scikit-image, pillow), nodejs 24 |
 | `pipeline/` | data pipeline (Python + a meshoptimizer step in Node) |
 | `docs/CONTRACT.md` | asset format shared by the pipeline and the web app |
 | `web/` | the web app (Vite, TypeScript, three.js / WebGL2) |
