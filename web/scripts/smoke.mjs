@@ -184,6 +184,9 @@ async function run(browser, assets) {
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(SHOTS, `${tag}-01-initial.png`) });
   ok('loaded');
+  // the default level is not remembered (only explicit choices are), so a new default reaches returning visitors
+  const savedAtStart = await page.evaluate(() => localStorage.getItem('cc.level'));
+  savedAtStart === null ? ok('default level not saved') : fail(`default level saved as ${savedAtStart}`);
 
   const info = await page.evaluate(() => {
     const a = window.__cc.app;
@@ -528,7 +531,8 @@ async function run(browser, assets) {
     await page.waitForFunction(() => !window.__cc.app.map.pendingLabels, null, { timeout: 10000 });
     await page.waitForTimeout(300);
     const n = await page.evaluate(() => ({ names: window.__cc.app.level.meta.names.length, tris: window.__cc.app.blobs.triangles }));
-    ok(`level switch -> ${id} (${n.names} names, ${n.tris} tris)`);
+    const saved = await page.evaluate(() => localStorage.getItem('cc.level'));
+    saved === id ? ok(`level switch -> ${id} (${n.names} names, ${n.tris} tris), choice saved`) : fail(`level switch -> ${id}: saved ${saved}`);
     await page.screenshot({ path: join(SHOTS, `${tag}-12-level-${id}.png`) });
   }
 

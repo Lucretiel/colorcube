@@ -1,5 +1,5 @@
 {
- "default": "standard",
+ "default": "detailed",
  "levels": [
   {
    "id": "basic",

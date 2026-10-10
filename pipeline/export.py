@@ -12,7 +12,7 @@ from scipy import ndimage
 from common import ASSETS, BUILD, LEVELS, N, write_json
 
 LEVEL_ORDER = ["basic", "standard", "detailed"]
-DEFAULT_LEVEL = "standard"
+DEFAULT_LEVEL = "detailed"
 
 
 def align4(n):

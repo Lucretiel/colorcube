@@ -65,6 +65,8 @@ export class UI {
       if (!info || this.loadingLevel) return;
       this.showLevelDesc();
       await this.loadLevel(info);
+      // remember only explicit choices, so a later change of the default reaches returning visitors
+      if (this.app.level?.info.id === info.id) store('cc.level', info.id);
     };
   }
   private showLevelDesc() {
@@ -84,7 +86,6 @@ export class UI {
       await this.app.setLevel(info, (f, what) => { if (token === this.loadToken) this.setLoading(f, `Loading ${info.title}: ${what}…`); });
       this.buildLegend();
       this.setLoading(null);
-      store('cc.level', info.id);
     } catch (err) {
       console.error(err);
       this.loadToken++; // stray progress callbacks of this load must not overwrite the message
