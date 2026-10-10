@@ -1,10 +1,28 @@
 // Slice plane state + geometry shared by the 3D plane and the 2D map.
 import * as THREE from 'three';
 
-export type Orientation = 'r' | 'g' | 'b' | 'gray' | 'free';
+export type Orientation = 'r' | 'g' | 'b' | 'gray' | 'hues' | 'free';
 
 const C = 128;
 const S3 = Math.sqrt(3);
+/** Hues map extent: the widest projection of the cube across all hues, and half the gray diagonal. */
+const HUES_X = (4 * C) / Math.sqrt(6), HUES_Y = C * S3;
+const HUE_NAMES = ['red', 'orange', 'yellow', 'chartreuse', 'green', 'spring green', 'cyan', 'azure', 'blue', 'violet', 'magenta', 'rose'];
+
+/** Name of the nearest 30° hue step. */
+export function hueName(deg: number): string { return HUE_NAMES[Math.round(wrapHue(deg) / 30) % 12]; }
+function wrapHue(deg: number): number { return ((deg % 360) + 360) % 360; }
+
+/**
+ * Unit chroma direction (perpendicular to the gray diagonal) of HSV hue `deg`: hsv(deg, 1, 1) minus its gray
+ * component. HSV hue depends only on this direction, so the half-plane gray axis + t·dir (t > 0) has exactly
+ * this hue, and the opposite half has hue + 180.
+ */
+export function hueDir(deg: number, out = new THREE.Vector3()): THREE.Vector3 {
+  const h = wrapHue(deg) / 60, f = (k: number) => 1 - Math.max(0, Math.min(1, Math.min(k, 4 - k)));
+  const r = f((5 + h) % 6), g = f((3 + h) % 6), b = f((1 + h) % 6), m = (r + g + b) / 3;
+  return out.set(r - m, g - m, b - m).normalize();
+}
 
 export interface MapFace {
   /** map-space corners (x,y) in map units, CCW: (x0,y0) (x1,y0) (x1,y1) (x0,y1) */
@@ -22,6 +40,8 @@ export class SliceState {
   /** signed distance of the plane from the cube centre along the normal (grid units) */
   offset = 0;
   az = 45; el = 35.264;
+  /** Hues mode: HSV hue shown on the map's right half (degrees, [0, 360)) */
+  hue = 0;
   readonly normal = new THREE.Vector3(0, 0, 1);
   readonly U = new THREE.Vector3(-1, 0, 0);
   readonly V = new THREE.Vector3(0, 1, 0);
@@ -32,11 +52,12 @@ export class SliceState {
 
   get halfRange(): number { return C * (Math.abs(this.normal.x) + Math.abs(this.normal.y) + Math.abs(this.normal.z)); }
 
-  /** Human slider value: channel byte for r/g/b, R+G+B sum for gray, offset for free. */
+  /** Human slider value: channel byte for r/g/b, R+G+B sum for gray, hue for Hues mode, offset for free. */
   get sliderMin(): number { return this.orientation === 'free' ? -Math.round(this.halfRange) : 0; }
   get sliderMax(): number {
     switch (this.orientation) {
       case 'gray': return 765;
+      case 'hues': return 359;
       case 'free': return Math.round(this.halfRange);
       default: return 255;
     }
@@ -45,6 +66,7 @@ export class SliceState {
     switch (this.orientation) {
       case 'r': case 'g': case 'b': return Math.round(this.offset + C - 0.5);
       case 'gray': return Math.round(this.offset * S3 + 3 * C - 1.5);
+      case 'hues': return Math.round(this.hue) % 360;
       case 'free': return Math.round(this.offset);
     }
   }
@@ -52,12 +74,23 @@ export class SliceState {
     switch (this.orientation) {
       case 'r': case 'g': case 'b': this.offset = Math.min(255, Math.max(0, v)) + 0.5 - C; break;
       case 'gray': this.offset = (Math.min(765, Math.max(0, v)) + 1.5 - 3 * C) / S3; break;
+      case 'hues': this.hue = wrapHue(v); this.update(); break; // wraps: the slider keeps rotating
       case 'free': this.offset = Math.max(-this.halfRange + 0.5, Math.min(this.halfRange - 0.5, v)); break;
     }
     this.version++;
   }
-  /** Continuous offset (drag). Snaps axis-aligned planes to voxel centres. */
+  /** Continuous hue (Hues-mode drag). */
+  setHue(deg: number) {
+    deg = wrapHue(deg);
+    if (deg === this.hue) return;
+    this.hue = deg;
+    if (this.orientation === 'hues') this.update();
+    this.version++;
+  }
+
+  /** Continuous offset (drag). Snaps axis-aligned planes to voxel centres. Hues-mode planes stay on the diagonal. */
   setOffset(o: number) {
+    if (this.orientation === 'hues') return;
     const h = this.halfRange - 0.5;
     o = Math.max(-h, Math.min(h, o));
     if (this.orientation === 'r' || this.orientation === 'g' || this.orientation === 'b') o = Math.round(o + C - 0.5) + 0.5 - C;
@@ -73,6 +106,7 @@ export class SliceState {
     if (isAxis && wasAxis) this.setSliderValue(keepByte);
     else if (isAxis) this.setSliderValue(128);
     else if (o === 'gray') this.setSliderValue(383);
+    else if (o === 'hues') this.offset = 0;
     else this.offset = Math.max(-this.halfRange + 0.5, Math.min(this.halfRange - 0.5, this.offset));
     this.version++;
   }
@@ -106,6 +140,8 @@ export class SliceState {
       case 'g': n.set(0, 1, 0); V.set(0, 0, -1); break;
       case 'b': n.set(0, 0, 1); V.set(0, 1, 0); break;
       case 'gray': n.set(1, 1, 1).normalize(); V.set(-1, 2, -1).normalize(); break;
+      // the plane holds the gray diagonal (map up, white at the top) and the hue direction (map right)
+      case 'hues': V.set(1, 1, 1).normalize(); n.crossVectors(hueDir(this.hue, U), V).normalize(); break;
       case 'free': {
         const a = THREE.MathUtils.degToRad(this.az), e = THREE.MathUtils.degToRad(this.el);
         n.set(Math.cos(e) * Math.cos(a), Math.sin(e), Math.cos(e) * Math.sin(a)).normalize();
@@ -128,9 +164,11 @@ export class SliceState {
   /** The current slice in map space (a single face). */
   faces(): MapFace[] {
     // fixed extent: projection of the cube onto the plane basis (independent of offset)
+    // (Hues mode: fixed across hues, so rotating neither rescales the map nor resets its zoom)
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     const tmp = new THREE.Vector3();
-    for (let k = 0; k < 8; k++) {
+    if (this.orientation === 'hues') { x0 = -HUES_X; x1 = HUES_X; y0 = -HUES_Y; y1 = HUES_Y; }
+    else for (let k = 0; k < 8; k++) {
       tmp.set(k & 1 ? 128 : -128, k & 2 ? 128 : -128, k & 4 ? 128 : -128);
       const x = tmp.dot(this.U), y = tmp.dot(this.V);
       x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
@@ -151,7 +189,9 @@ export class SliceState {
       const da = pa.dot(n) - d, db = pb.dot(n) - d;
       if ((da < 0 && db >= 0) || (da >= 0 && db < 0)) {
         const t = da / (da - db);
-        pts.push(pa.clone().lerp(pb, t));
+        const p = pa.clone().lerp(pb, t);
+        // a plane through a cube corner crosses each of its edges there (always the case in Hues mode)
+        if (!pts.some((q) => q.distanceToSquared(p) < 1e-8)) pts.push(p);
       }
     }
     if (pts.length < 3) return [];
@@ -174,6 +214,13 @@ export class SliceState {
       const word = ['red', 'green', 'blue'][i], pos = comps[i] > 0;
       return { text: 'RGB'[i], edge, from: pos ? 0 : 255, to: pos ? 255 : 0, label: pos ? `${word} →` : `← ${word}` };
     };
+    if (this.orientation === 'hues') {
+      const right = this.U.dot(hueDir(this.hue)) > 0 ? this.hue : this.hue + 180;
+      return [
+        { text: '', edge: 'bottom', from: NaN, to: NaN, label: `← ${hueName(right + 180)} · ${hueName(right)} →` },
+        { text: '', edge: 'left', from: 0, to: 255, label: 'black → white' },
+      ];
+    }
     return [axis(this.U, 'bottom'), axis(this.V, 'left')];
   }
 
@@ -183,6 +230,7 @@ export class SliceState {
       case 'g': return `G = ${this.sliderValue}`;
       case 'b': return `B = ${this.sliderValue}`;
       case 'gray': return `R+G+B = ${this.sliderValue}`;
+      case 'hues': return `Hue = ${this.sliderValue}° · ${hueName(this.hue)} | ${hueName(this.hue + 180)}`;
       case 'free': {
         const n = this.normal;
         return `n = (${n.x.toFixed(2)}, ${n.y.toFixed(2)}, ${n.z.toFixed(2)}), d = ${this.offset.toFixed(1)}`;

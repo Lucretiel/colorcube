@@ -39,6 +39,134 @@ function startServer() {
   });
 }
 
+const settle = async (page) => {
+  await page.waitForFunction(() => !window.__cc.app.map.pendingLabels, null, { timeout: 5000 });
+  await page.waitForTimeout(150);
+};
+
+/** Hues slices: geometry, fixed map extent, hue accuracy, true colour on the map, rotating plane drag. */
+async function huesChecks(page, tag) {
+  await page.keyboard.press('5');
+  await page.evaluate(() => window.__cc.app.setSliderValue(30));
+  await settle(page);
+  await page.screenshot({ path: join(SHOTS, `${tag}-07b-hues.png`) });
+  let bounds0 = null;
+  for (const hue of [0, 37, 200]) {
+    if (hue === 37) await page.evaluate(() => { window.__cc.app.map.zoom = 2; });
+    await page.evaluate((h) => window.__cc.app.setSliderValue(h), hue);
+    await settle(page);
+    const r = await page.evaluate(() => {
+      const a = window.__cc.app, s = a.slice, m = a.map;
+      const poly = s.polygon3D().map((p) => p.toArray());
+      const has = (c) => poly.some((p) => p.every((v, i) => Math.abs(v - c[i]) < 1e-3));
+      let dupes = 0;
+      for (let i = 0; i < poly.length; i++) for (let j = i + 1; j < poly.length; j++) if (Math.hypot(...poly[i].map((v, k) => v - poly[j][k])) < 1e-3) dupes++;
+      const hsvHue = ([R, G, B]) => {
+        const mx = Math.max(R, G, B), mn = Math.min(R, G, B), d = mx - mn;
+        if (d < 1) return NaN;
+        const h = mx === R ? (G - B) / d : mx === G ? (B - R) / d + 2 : (R - G) / d + 4;
+        return (h * 60 + 360) % 360;
+      };
+      const hueErr = (x, y) => Math.abs(((x - y + 540) % 360) - 180);
+      // HSV hue of map points right / left of the gray axis (at the map's current zoom)
+      const hr = m.host.getBoundingClientRect(), I = m.inner, right = a.clipSide > 0 ? s.hue : s.hue + 180;
+      let hueMax = 0, hueN = 0;
+      for (const fx of [0.6, 0.75, 0.9, 0.1, 0.25, 0.4]) for (const fy of [0.3, 0.5, 0.7]) {
+        const hit = a.mapGridAt(hr.left + I.x + I.w * fx, hr.top + I.y + I.h * fy);
+        if (!hit) continue;
+        const hh = hsvHue(hit.g.toArray());
+        if (Number.isNaN(hh)) continue;
+        hueMax = Math.max(hueMax, hueErr(hh, fx > 0.5 ? right : right + 180)); hueN++;
+      }
+      return {
+        poly: poly.length, black: has([0, 0, 0]), white: has([256, 256, 256]), dupes, offset: s.offset,
+        nGray: Math.abs(s.normal.x + s.normal.y + s.normal.z), bounds: { ...m.bounds }, zoom: m.zoom,
+        hueMax, hueN, desc: s.describe(),
+      };
+    });
+    const geomOk = r.black && r.white && r.dupes === 0 && r.poly >= 4 && r.poly <= 6 && r.offset === 0 && r.nGray < 1e-6;
+    geomOk ? ok(`hues ${hue}°: ${r.poly}-gon through black and white corners (${r.desc})`) : fail(`hues ${hue}° geometry ${JSON.stringify(r)}`);
+    r.hueN >= 10 && r.hueMax < 0.5 ? ok(`hues ${hue}°: HSV hue of ${r.hueN} map points within ${r.hueMax.toFixed(3)}°`) : fail(`hues ${hue}° hue: ${r.hueN} points, max error ${r.hueMax}`);
+    if (!bounds0) bounds0 = r.bounds;
+    else if (JSON.stringify(bounds0) !== JSON.stringify(r.bounds)) fail(`hues map extent changed with hue: ${JSON.stringify(bounds0)} -> ${JSON.stringify(r.bounds)}`);
+    if (hue !== 0) r.zoom === 2 ? ok(`hues ${hue}°: map extent fixed, zoom kept`) : fail(`hues ${hue}°: zoom reset to ${r.zoom}`);
+  }
+  await page.evaluate(() => { window.__cc.app.map.zoom = 1; window.__cc.app.setSliderValue(30); });
+  await settle(page);
+
+  // true colour on the hues map, away from region borders
+  const tc = await page.evaluate(() => {
+    const a = window.__cc.app, s = a.slice, u = s.U.toArray(), v = s.V.toArray();
+    const interior = (g) => {
+      const L = a.labelAt(g[0], g[1], g[2]);
+      for (const [i, j] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [-2, 2], [2, -2]]) {
+        if (a.labelAt(g[0] + i * u[0] + j * v[0], g[1] + i * u[1] + j * v[1], g[2] + i * u[2] + j * v[2]) !== L) return false;
+      }
+      return g.every((c) => c > 3 && c < 253);
+    };
+    const exp = (g) => g.map((c) => Math.round(Math.min(1, Math.max(0, c / 256)) * 255));
+    const hr = a.map.host.getBoundingClientRect(), I = a.map.inner, out = [];
+    for (let i = 0; i < 3000 && out.length < 30; i++) {
+      const x = hr.left + I.x + I.w * (0.03 + 0.94 * Math.random()), y = hr.top + I.y + I.h * (0.03 + 0.94 * Math.random());
+      const hit = a.mapGridAt(x, y);
+      if (!hit || !interior(hit.g.toArray())) continue;
+      out.push({ got: a.readPixel(x, y).rgba.slice(0, 3), exp: exp(hit.g.toArray()) });
+    }
+    return out;
+  });
+  const err = tc.reduce((m, t) => Math.max(m, ...t.got.map((v, i) => Math.abs(v - t.exp[i]))), 0);
+  tc.length >= 10 && err <= 1 ? ok(`true-colour hues map: ${tc.length} samples, max channel error ${err}`) : fail(`true-colour hues map: ${tc.length} samples, max error ${err} ${JSON.stringify(tc.slice(0, 3))}`);
+
+  // dragging the plane turns it about the gray axis without a limit, the grabbed point following the pointer:
+  // trace the grab point around its circle in the default view, and seen edge-on (camera perpendicular to the
+  // gray axis, where the drag can't intersect the circle's plane and follows the on-screen motion instead)
+  for (const [view, sweep, hue] of [['default view', 150, 30], ['edge-on view', 60, 60]]) {
+    await page.evaluate(({ view, hue }) => {
+      const a = window.__cc.app;
+      a.resetCamera();
+      if (view === 'edge-on view') { a.camera.position.set(1, -1, 0).normalize().multiplyScalar(960); a.controls.update(); }
+      a.setSliderValue(hue);
+    }, { view, hue });
+    await settle(page);
+    const grab = await page.evaluate((sweep) => {
+      const a = window.__cc.app, s = a.slice, r = a.canvas.getBoundingClientRect();
+      const axis = s.normal.clone().set(1, 1, 1).normalize();
+      const toScreen = (v) => { const p = v.clone().project(a.camera); return [r.left + (p.x + 1) * r.width / 2, r.top + (1 - p.y) * r.height / 2]; };
+      for (let i = 0; i < 4000; i++) {
+        const x = r.left + r.width * (0.2 + 0.6 * Math.random()), y = r.top + r.height * (0.1 + 0.8 * Math.random());
+        const pk = a.pick(x, y);
+        if (pk.id !== -1) continue;
+        const rel = pk.grid.clone().addScalar(-128);
+        if (Math.abs(rel.dot(s.U)) < 50) continue; // enough lever arm
+        // the whole traced arc must stay on screen and keep moving across it
+        const path = [];
+        for (let k = 1; k <= 30; k++) path.push(toScreen(rel.clone().applyAxisAngle(axis, ((sweep * k) / 30) * Math.PI / 180)));
+        const steps = path.map((p, k) => Math.hypot(p[0] - (k ? path[k - 1][0] : x), p[1] - (k ? path[k - 1][1] : y)));
+        if (Math.min(...steps) < 3 || path.some(([px, py]) => px < r.left + 20 || px > r.right - 20 || py < r.top + 20 || py > r.bottom - 20)) continue;
+        return { x, y, rel: rel.toArray(), hue: s.hue, path };
+      }
+      return null;
+    }, sweep);
+    if (!grab) { fail(`hues drag (${view}): could not find a usable grab point on the plane`); continue; }
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down();
+    for (const [x, y] of grab.path) { await page.mouse.move(x, y); await page.waitForTimeout(16); }
+    await page.mouse.up();
+    await settle(page);
+    const d = await page.evaluate(({ rel, hue, last }) => {
+      const a = window.__cc.app, s = a.slice, r = a.canvas.getBoundingClientRect();
+      const turned = ((s.hue - hue + 540) % 360) - 180;
+      const p = s.normal.clone().fromArray(rel).applyAxisAngle(s.normal.clone().set(1, 1, 1).normalize(), (turned * Math.PI) / 180).project(a.camera);
+      return { turned, offset: s.offset, miss: Math.hypot(r.left + (p.x + 1) * r.width / 2 - last[0], r.top + (1 - p.y) * r.height / 2 - last[1]) };
+    }, { rel: grab.rel, hue: grab.hue, last: grab.path[grab.path.length - 1] });
+    Math.abs(d.turned - sweep) < 8 && d.miss < 15 && d.offset === 0
+      ? ok(`hues plane drag (${view}): traced ${sweep}°, plane turned ${d.turned.toFixed(1)}°, grab point ${d.miss.toFixed(1)} px from the pointer`)
+      : fail(`hues plane drag (${view}): traced ${sweep}° ${JSON.stringify(d)}`);
+    await page.screenshot({ path: join(SHOTS, `${tag}-07c-hues-dragged-${view.split(' ')[0]}.png`) });
+  }
+  await page.evaluate(() => window.__cc.app.resetCamera());
+}
+
 async function run(browser, assets) {
   const tag = assets === 'assets' ? 'real' : 'fake';
   console.log(`\n== ${tag} assets (${assets})`);
@@ -181,7 +309,7 @@ async function run(browser, assets) {
   // --- collapse explode, slice orientations
   await page.evaluate(() => window.__cc.app.setExplode(0, false));
   await page.mouse.move(5, 5);
-  for (const [key, o] of [['1', 'r'], ['2', 'g'], ['4', 'gray'], ['3', 'b']]) {
+  for (const [key, o] of [['1', 'r'], ['2', 'g'], ['4', 'gray'], ['5', 'hues'], ['6', 'free'], ['3', 'b']]) {
     await page.keyboard.press(key);
     await page.waitForTimeout(150);
     const cur = await page.evaluate(() => window.__cc.app.slice.orientation);
@@ -228,12 +356,13 @@ async function run(browser, assets) {
   const labels = await page.evaluate(() => window.__cc.app.map.labels.map((l) => ({ t: l.lines.join(' '), s: +l.size.toFixed(1), a: +l.angle.toFixed(2) })));
   labels.length > 0 ? ok(`2D labels: ${labels.length} (${labels.slice(0, 6).map((l) => l.t).join(', ')})`) : fail('no 2D labels');
 
-  // --- gray diagonal + free
+  // --- grey (across the gray diagonal), hues (along it) + free
   await page.keyboard.press('4');
   await page.waitForFunction(() => !window.__cc.app.map.pendingLabels, null, { timeout: 5000 });
   await page.waitForTimeout(150);
   await page.screenshot({ path: join(SHOTS, `${tag}-07-gray.png`) });
-  await page.keyboard.press('5');
+  await huesChecks(page, tag);
+  await page.keyboard.press('6');
   await page.evaluate(() => window.__cc.app.setAngles(30, 20));
   await page.waitForFunction(() => !window.__cc.app.map.pendingLabels, null, { timeout: 5000 });
   await page.waitForTimeout(150);

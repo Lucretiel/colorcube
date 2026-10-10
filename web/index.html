@@ -57,8 +57,9 @@
             <button data-o="r" title="Constant red (1)"><span class="dot" style="background:#ff3b3b"></span>R</button>
             <button data-o="g" title="Constant green (2)"><span class="dot" style="background:#3bd14a"></span>G</button>
             <button data-o="b" title="Constant blue (3)"><span class="dot" style="background:#3b7bff"></span>B</button>
-            <button data-o="gray" title="Constant R+G+B — perpendicular to the gray diagonal (4)"><span class="dot gray"></span>Gray</button>
-            <button data-o="free" title="Free rotation (5)"><span class="dot free"></span>Free</button>
+            <button data-o="gray" title="Constant R+G+B — cuts across the grey diagonal (4)"><span class="dot gray"></span>Grey</button>
+            <button data-o="hues" title="Contains the grey diagonal — rotate around it by hue (5)"><span class="dot hues"></span>Hues</button>
+            <button data-o="free" title="Free rotation (6)"><span class="dot free"></span>Free</button>
           </div>
           <div class="row slider-row">
             <label for="slice-pos" class="lbl" id="slice-pos-lbl">B</label>
@@ -149,11 +150,11 @@
         <header><h2>Keyboard &amp; mouse</h2><button id="help-close" class="icon-btn" aria-label="Close">✕</button></header>
         <div class="help-grid">
           <div><kbd>Drag</kbd> orbit · <kbd>Right-drag</kbd> pan · <kbd>Wheel</kbd> zoom</div>
-          <div><kbd>Drag plane</kbd> move slice along its normal</div>
+          <div><kbd>Drag plane</kbd> move slice along its normal (Hues: rotate it)</div>
           <div><kbd>Click</kbd> blob / legend: solo that name (again = show all)</div>
           <div><kbd>Shift</kbd>+<kbd>Click</kbd> hide / show a name</div>
           <div><kbd>E</kbd> explode / collapse · <kbd>[</kbd> <kbd>]</kbd> explode less / more</div>
-          <div><kbd>1</kbd>–<kbd>5</kbd> slice orientation R · G · B · Gray · Free</div>
+          <div><kbd>1</kbd>–<kbd>6</kbd> slice orientation R · G · B · Grey · Hues · Free</div>
           <div><kbd>↑</kbd> <kbd>↓</kbd> move slice (<kbd>Shift</kbd> ×10) · <kbd>←</kbd> <kbd>→</kbd> rotate free slice</div>
           <div><kbd>V</kbd> slice in 3D · <kbd>C</kbd> cut blobs · <kbd>F</kbd> flip cut side</div>
           <div><kbd>D</kbd> download map PNG</div>

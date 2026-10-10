@@ -9,7 +9,7 @@ connected region with the same name is a blob. You can pull the cube apart to se
 *fully saturated color map* (`satfaces_map_huge.png`).
 
 - **3D:** one mesh per region, colored by position in the shader, so every surface point shows its true sRGB color. You can explode the cube, hover a blob for its name and color, click to solo a name, and toggle names in the legend.
-- **Slices:** R, G, B, gray-diagonal (R+G+B constant) or any free orientation. You can drag the plane in 3D or use the slider and keys. Blobs can be cut at the plane, and cut blobs get solid true-color caps.
+- **Slices:** R, G, B, Grey (constant R+G+B, across the gray diagonal), Hues (a plane containing the gray diagonal, rotated around it by hue: one hue and its complement, black to white) or any free orientation. You can drag the plane in 3D or use the slider and keys. Blobs can be cut at the plane, and cut blobs get solid true-color caps.
 - **2D map:** sampled from the 256³ label volume, with smooth borders, thin white region outlines and hand-lettered labels sized to each region (placed by a web worker). It supports zoom, pan and hover, and exports a 2400 px PNG.
 - **Detail levels:** *basic* (11 basic color terms), *standard* (the top 36 names plus black and white, 28 of which win somewhere) and *detailed* (every name given at least 1,500 times, 179 candidates of which 39 win somewhere).
 

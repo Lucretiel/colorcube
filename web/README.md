@@ -76,7 +76,7 @@ nix develop -c node web/scripts/shot.mjs web/scripts/final-screens.mjs   # [--sc
   show all); Shift-click hides/shows a name.
 - **Legend** – every name with its mean color, % of the cube, a size bar, visibility toggle and filter box.
 - **Detail levels** from `levels.json`, loaded lazily; GPU resources of the previous level are disposed.
-- **Slices** – R, G, B, gray-diagonal (constant R+G+B) and free orientation (azimuth/elevation).
+- **Slices** – R, G, B, Grey (constant R+G+B), Hues (contains the gray diagonal; the slider picks the HSV hue on the right half, its complement is on the left) and free orientation (azimuth/elevation).
   Drag the plane itself or its arrow handle in the 3D view, or use the sliders / arrow keys.
   The plane shows the labelled cross-section sampled from the 256³ label volume (R8UI 3D texture) with
   smooth borders. Blobs can be cut on one side of the plane – the cut happens in unexploded RGB space,

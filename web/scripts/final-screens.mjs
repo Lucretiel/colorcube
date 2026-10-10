@@ -55,10 +55,13 @@ export default async (page, shot) => {
   await shot('final-04-map-mid');
   await shot('final-04b-map-mid-panel', { locator: '#map-panel' });
 
-  // grey diagonal
+  // grey: across the gray diagonal; hues: along it
   await page.evaluate(() => { const a = window.__cc.app; const p = document.getElementById('map-panel'); p.style.width = ''; p.style.height = ''; a.layoutMap(); a.setOrientation('gray'); a.setSliderValue(383); });
   await settle(page, 400);
   await shot('final-05-gray');
+  await page.evaluate(() => { const a = window.__cc.app; a.setOrientation('hues'); a.setSliderValue(30); });
+  await settle(page, 400);
+  await shot('final-05b-hues');
 
   // detailed level: exploded with labels, and its map export
   await level(page, 'detailed');

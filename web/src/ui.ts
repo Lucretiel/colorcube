@@ -341,7 +341,8 @@ export class UI {
         case '2': a.setOrientation('g'); break;
         case '3': a.setOrientation('b'); break;
         case '4': a.setOrientation('gray'); break;
-        case '5': a.setOrientation('free'); break;
+        case '5': a.setOrientation('hues'); break;
+        case '6': a.setOrientation('free'); break;
         case 'ArrowUp': a.nudgeSlice(e.shiftKey ? 10 : 1); break;
         case 'ArrowDown': a.nudgeSlice(e.shiftKey ? -10 : -1); break;
         case 'ArrowLeft': case 'ArrowRight': {
@@ -422,9 +423,9 @@ export class UI {
       if (document.activeElement !== el) el.value = String(s.sliderValue);
       el.style.setProperty('--fill', `${(100 * (s.sliderValue - s.sliderMin)) / Math.max(1, s.sliderMax - s.sliderMin)}%`);
     }
-    const lbl = { r: 'R', g: 'G', b: 'B', gray: 'R+G+B', free: 'Offset' }[s.orientation];
+    const lbl = { r: 'R', g: 'G', b: 'B', gray: 'R+G+B', hues: 'Hue', free: 'Offset' }[s.orientation];
     $('slice-pos-lbl').textContent = lbl;
-    $('slice-pos-out').textContent = String(s.sliderValue);
+    $('slice-pos-out').textContent = s.orientation === 'hues' ? `${s.sliderValue}°` : String(s.sliderValue);
     $('free-angles').hidden = s.orientation !== 'free';
     set('slice-az', String(s.az)); set('slice-el', String(s.el));
     $('slice-az-out').textContent = `${Math.round(s.az)}°`;

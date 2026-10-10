@@ -6,7 +6,7 @@ import { gridToByte, loadLevel, majorityLabel, toHex, type LevelData, type Level
 import { Labels3D, type LabelSpot } from './labels3d';
 import { Map2D, measureNames } from './map2d';
 import type { NameMetric } from './labeler';
-import { buildPlaneGeometry, mapToGrid, SliceState, type Orientation } from './slice';
+import { buildPlaneGeometry, hueDir, mapToGrid, SliceState, type Orientation } from './slice';
 import { backingFragment, backingPickFragment, backingVertex, flatPickFragment, flatPickVertex, slice3DVertex, sliceFragment } from './shaders';
 
 export interface HoverInfo {
@@ -25,6 +25,9 @@ const DOLLY = 0.75;
 const PICK_NONE = 0, PICK_PLANE = -1, PICK_HANDLE = -2, PICK_FACE = -3;
 const HOVER_REPICK_MS = 100; // re-pick under a still cursor at most this often while the view moves
 const CAMERA_HOME = new THREE.Vector3(1.2, 0.82, 1.38).normalize().multiplyScalar(960);
+// Hues-mode drags: the gray axis and a right-handed basis around it (angle grows with hue)
+const GRAY = new THREE.Vector3(1, 1, 1).normalize();
+const E1 = hueDir(0), E2 = new THREE.Vector3().crossVectors(GRAY, E1);
 
 export class App {
   readonly canvas: HTMLCanvasElement;
@@ -99,7 +102,11 @@ export class App {
   continuous = false;
 
   // interaction
-  private dragPlane: { start: THREE.Vector3; offset0: number; pointerId: number; y0: number } | null = null;
+  /** Hues mode: the hue at grab time and the previous pointer position */
+  private dragPlane: {
+    start: THREE.Vector3; offset0: number; pointerId: number; y0: number;
+    hue0: number; prev: { x: number; y: number };
+  } | null = null;
   private downAt: { x: number; y: number; t: number } | null = null;
   private pendingHover: { x: number; y: number } | null = null;
   /** last cursor position over the canvas with no button held (null when outside / dragging) */
@@ -109,6 +116,7 @@ export class App {
   private lastHoverAt = 0;
   private tmpV = new THREE.Vector3();
   private tmpV2 = new THREE.Vector3();
+  private tmpV3 = new THREE.Vector3();
   private ray = new THREE.Ray();
   private ndc = new THREE.Vector2();
 
@@ -488,9 +496,15 @@ export class App {
     lp.needsUpdate = true;
     lg.setDrawRange(0, n);
     this.hasPolygon = pts.length > 0;
-    // handle at polygon centroid
+    // handle at polygon centroid; Hues mode: out on the hue side (the centroid is on the axis, which has no
+    // leverage for a rotating drag)
     if (pts.length) {
       const c = pts.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
+      if (this.slice.orientation === 'hues') {
+        const h = hueDir(this.slice.hue), o = this.slice.center();
+        const reach = Math.max(...pts.map((p) => p.clone().sub(o).dot(h)));
+        c.copy(o).addScaledVector(h, 0.6 * reach);
+      }
       this.handle.position.copy(c);
       this.handle.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), this.slice.normal);
     }
@@ -662,7 +676,10 @@ export class App {
       if (p.id === PICK_PLANE || p.id === PICK_HANDLE) {
         e.stopPropagation(); e.preventDefault();
         const start = p.id === PICK_HANDLE ? this.handle.position.clone() : p.grid.clone();
-        this.dragPlane = { start, offset0: this.slice.offset, pointerId: e.pointerId, y0: e.clientY };
+        this.dragPlane = {
+          start, offset0: this.slice.offset, pointerId: e.pointerId, y0: e.clientY,
+          hue0: this.slice.hue, prev: { x: e.clientX, y: e.clientY },
+        };
         this.lastPointer = null;
         el.setPointerCapture(e.pointerId);
         el.style.cursor = 'grabbing';
@@ -703,6 +720,7 @@ export class App {
     this.ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     this.ray.origin.setFromMatrixPosition(this.camera.matrixWorld);
     this.ray.direction.set(this.ndc.x, this.ndc.y, 0.5).unproject(this.camera).sub(this.ray.origin).normalize();
+    if (this.slice.orientation === 'hues') { this.dragHues(d, clientX, clientY); this.emitState(); return; }
     // world-space line through the grab point along the normal
     const n = this.slice.normal;
     const P = this.tmpV.copy(d.start).add(this.root.position); // grid -> world (unexploded)
@@ -722,6 +740,37 @@ export class App {
     }
     this.slice.setOffset(d.offset0 + s);
     this.emitState();
+  }
+
+  /**
+   * Hues mode: the plane turns about the gray axis, carrying the grab point around a circle. Where that
+   * circle's plane faces the camera, intersect the pointer ray with it and turn the grab point to the hit's
+   * angle (exact, unlimited, nothing accumulates). Seen edge-on that intersection is unstable, so instead turn
+   * by the pointer motion along the grab point's on-screen direction of travel.
+   */
+  private dragHues(d: NonNullable<App['dragPlane']>, clientX: number, clientY: number) {
+    const C = this.tmpV.setScalar(128).add(this.root.position); // cube centre, world (unexploded)
+    // the grab point now, relative to the centre
+    const rel = this.tmpV2.copy(d.start).subScalar(128).applyAxisAngle(GRAY, THREE.MathUtils.degToRad(this.slice.hue - d.hue0));
+    const rd = this.ray.direction, facing = rd.dot(GRAY);
+    let turn = 0; // radians, right-handed about GRAY (= towards higher hue)
+    if (Math.abs(facing) > 0.3) {
+      const hit = this.ray.at(this.tmpV3.copy(rel).add(C).sub(this.ray.origin).dot(GRAY) / facing, this.tmpV3).sub(C);
+      hit.addScaledVector(GRAY, -hit.dot(GRAY));
+      if (hit.length() > 4) { // too close to the axis, the angle is noise
+        const a = Math.atan2(hit.dot(E2), hit.dot(E1)) - Math.atan2(rel.dot(E2), rel.dot(E1));
+        turn = Math.atan2(Math.sin(a), Math.cos(a));
+      }
+    } else {
+      const r = this.canvasRect;
+      const p = this.tmpV3.copy(rel).add(C), q = rel.cross(GRAY).negate().multiplyScalar(0.05).add(p); // + 0.05 rad of travel
+      p.project(this.camera); q.project(this.camera);
+      const tx = ((q.x - p.x) * r.width) / 2 / 0.05, ty = (-(q.y - p.y) * r.height) / 2 / 0.05; // px per radian
+      // floor the gain where the travel points at the camera (the point barely moves on screen)
+      turn = ((clientX - d.prev.x) * tx + (clientY - d.prev.y) * ty) / Math.max(tx * tx + ty * ty, 80 * 80);
+    }
+    d.prev.x = clientX; d.prev.y = clientY;
+    if (turn) this.slice.setHue(this.slice.hue + THREE.MathUtils.radToDeg(turn));
   }
 
   private click(clientX: number, clientY: number, shift: boolean) {
