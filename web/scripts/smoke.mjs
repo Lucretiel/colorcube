@@ -306,6 +306,70 @@ async function run(browser, assets) {
     await page.keyboard.press('Escape');
   } else fail('no blob found to hover');
 
+  // --- with a selection, the 3D plane fades the regions of hidden names (the 2D map does not)
+  const sel = await page.evaluate(() => {
+    const a = window.__cc.app;
+    a.setExplode(0, false); a.resetCamera(); a.setShowSlice(true); a.setClip(true); a.setHoverName(-1);
+    a.setOrientation('b'); a.setSliderValue(128);
+    a.showAll();
+    const N = a.labelAt(128, 128, 128);
+    a.solo(N);
+    a.decor.visible = false;
+    const interior = (g) => {
+      const L = a.labelAt(g[0], g[1], g[2]);
+      for (const [i, j] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2], [-2, 2], [2, -2]]) if (a.labelAt(g[0] + i, g[1] + j, g[2]) !== L) return -1;
+      return g.every((c) => c > 3 && c < 253) ? L : -1;
+    };
+    const tc = (g) => g.map((c) => Math.round(Math.min(1, Math.max(0, c / 256)) * 255));
+    const dim = (g) => g.map((c) => Math.round((Math.min(1, Math.max(0, c / 256)) * 0.45 + 0.5 * 0.55) * 255));
+    const covered = (x, y) => ['map-panel', 'side', 'tooltip'].some((id) => {
+      const el = document.getElementById(id); if (!el || el.hidden) return false;
+      const b = el.getBoundingClientRect(); return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
+    });
+    const out = { shown: [], faded: [], map: [] }, r = a.canvas.getBoundingClientRect();
+    for (let i = 0; i < 4000 && (out.shown.length < 15 || out.faded.length < 30); i++) {
+      const x = r.left + r.width * (0.15 + 0.7 * Math.random()), y = r.top + r.height * (0.1 + 0.8 * Math.random());
+      if (covered(x, y)) continue;
+      const p = a.readPixel(x, y), g = p.pick.grid;
+      if (p.pick.id !== -1) continue;
+      const hp = a.handle.position; if (Math.hypot(g[0] - hp.x, g[1] - hp.y) < 30) continue;
+      if (g.slice(0, 2).some((c) => c < 6 || c > 250)) continue;
+      const L = interior(g);
+      if (L < 0) continue;
+      if (L === N) { if (out.shown.length < 15) out.shown.push({ got: p.rgba.slice(0, 3), exp: tc(g) }); continue; }
+      if (out.faded.length >= 30) continue;
+      const at = (alpha) => { a.hiddenPlaneAlpha = alpha; return a.readPixel(x, y).rgba.slice(0, 3); };
+      const behind = at(0), opaque = at(1), got = at(0.15);
+      out.faded.push({ got, behind, opaque, exp: opaque.map((o, k) => Math.round(0.15 * o + 0.85 * behind[k])), dim: dim(g) });
+    }
+    a.hiddenPlaneAlpha = 0.15;
+    const hr = a.map.host.getBoundingClientRect(), I = a.map.inner;
+    for (let i = 0; i < 3000 && out.map.length < 20; i++) {
+      const x = hr.left + I.x + I.w * (0.03 + 0.94 * Math.random()), y = hr.top + I.y + I.h * (0.03 + 0.94 * Math.random());
+      const hit = a.mapGridAt(x, y);
+      if (!hit) continue;
+      const g = hit.g.toArray(), L = interior(g);
+      if (L < 0 || L === N) continue;
+      out.map.push({ got: a.readPixel(x, y).rgba.slice(0, 3), exp: dim(g) });
+    }
+    a.decor.visible = true;
+    return out;
+  });
+  await page.screenshot({ path: join(SHOTS, `${tag}-04b-selection-plane.png`) });
+  const selErr = (arr, key = 'exp') => arr.reduce((m, t) => Math.max(m, ...t.got.map((v, i) => Math.abs(v - t[key][i]))), 0);
+  const contrast = sel.faded.filter((t) => t.opaque.some((v, i) => Math.abs(v - t.behind[i]) > 20)).length;
+  const opaqueOk = sel.faded.every((t) => t.opaque.every((v, i) => Math.abs(v - t.dim[i]) <= 2));
+  sel.shown.length >= 5 && selErr(sel.shown) <= 1
+    ? ok(`selection plane: selected regions opaque true colour (${sel.shown.length} samples, max error ${selErr(sel.shown)})`)
+    : fail(`selection plane: selected regions ${JSON.stringify(sel.shown.slice(0, 3))}`);
+  sel.faded.length >= 10 && contrast >= 5 && opaqueOk && selErr(sel.faded) <= 2
+    ? ok(`selection plane: hidden regions at 15% alpha (${sel.faded.length} samples, ${contrast} over contrasting backgrounds, max error ${selErr(sel.faded)})`)
+    : fail(`selection plane: hidden regions (${sel.faded.length} samples, ${contrast} contrasting, opaque dim ok ${opaqueOk}) ${JSON.stringify(sel.faded.slice(0, 3))}`);
+  sel.map.length >= 10 && selErr(sel.map) <= 2
+    ? ok(`selection map: hidden regions unchanged (opaque, dimmed; ${sel.map.length} samples, max error ${selErr(sel.map)})`)
+    : fail(`selection map: hidden regions ${JSON.stringify(sel.map.slice(0, 3))}`);
+  await page.evaluate(() => window.__cc.app.showAll());
+
   // --- collapse explode, slice orientations
   await page.evaluate(() => window.__cc.app.setExplode(0, false));
   await page.mouse.move(5, 5);

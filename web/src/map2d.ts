@@ -67,7 +67,7 @@ export class Map2D {
     this.material = new THREE.ShaderMaterial({
       vertexShader: slice2DVertex,
       fragmentShader: sliceFragment,
-      uniforms: { ...uniforms, uView: { value: new THREE.Vector4() }, uOpacity: { value: 1 }, uPick: { value: 0 }, uPickId: { value: 0 } },
+      uniforms: { ...uniforms, uView: { value: new THREE.Vector4() }, uOpacity: { value: 1 }, uHiddenAlpha: { value: 1 }, uPick: { value: 0 }, uPickId: { value: 0 } },
       depthTest: false, depthWrite: false,
     });
     this.mesh = new THREE.Mesh(this.geometry, this.material);

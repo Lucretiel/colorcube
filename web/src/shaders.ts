@@ -225,6 +225,7 @@ uniform float uBorderPx;       // white border width in device px
 uniform float uBlur;           // in-plane smoothing radius (grid units); 0 = trilinear majority only
 uniform float uOpacity;
 uniform float uDimHidden;
+uniform float uHiddenAlpha;    // alpha of hidden names' regions (3D plane: faded so the selection stands out)
 uniform float uPick;           // > 0.5: write pick output instead of colour
 uniform float uPickId;
 in vec3 vGrid;
@@ -304,7 +305,10 @@ void main() {
     border = 1.0 - smoothstep(halfW - 0.6, halfW + 0.6, distPx);
   }
   col = mix(col, vec3(1.0), border);
-  gl_FragColor = vec4(col, uOpacity);
+  // a border touching a visible name outlines the selection and stays opaque
+  float vis = mask.r;
+  if (second >= 0) vis = max(vis, border * texelFetch(uNameMask, ivec2(int(sl[second]), 0), 0).r);
+  gl_FragColor = vec4(col, uOpacity * mix(uHiddenAlpha, 1.0, vis));
 }
 `;
 

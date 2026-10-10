@@ -182,12 +182,12 @@ export class App {
     // in-scene slice plane
     this.planeMat = new THREE.ShaderMaterial({
       vertexShader: slice3DVertex, fragmentShader: sliceFragment,
-      uniforms: { ...this.sliceUniforms, uOpacity: { value: 1 }, uPick: { value: 0 }, uPickId: { value: PICK_PLANE } },
+      uniforms: { ...this.sliceUniforms, uOpacity: { value: 1 }, uHiddenAlpha: { value: 1 }, uPick: { value: 0 }, uPickId: { value: PICK_PLANE } },
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4,
     });
     this.planePickMat = new THREE.ShaderMaterial({
       vertexShader: slice3DVertex, fragmentShader: sliceFragment,
-      uniforms: { ...this.sliceUniforms, uOpacity: { value: 1 }, uPick: { value: 1 }, uPickId: { value: PICK_PLANE } },
+      uniforms: { ...this.sliceUniforms, uOpacity: { value: 1 }, uHiddenAlpha: { value: 1 }, uPick: { value: 1 }, uPickId: { value: PICK_PLANE } },
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4,
     });
     this.plane = new THREE.Mesh(this.planeGeom, this.planeMat);
@@ -566,7 +566,7 @@ export class App {
     this.syncState();
     const dpr = this.renderer.getPixelRatio();
     this.camera.setViewOffset(r.width * dpr, r.height * dpr, Math.floor(x * dpr), Math.floor(y * dpr), 1, 1);
-    const ghost = this.planeMat.transparent;
+    const ghost = this.planeGhost;
     this.renderIds(this.pickTarget, !ghost, true);
     this.renderer.readRenderTargetPixels(this.pickTarget, 0, 0, 1, 1, this.pickBuf);
     if (ghost && Math.round(this.pickBuf[0]) === PICK_NONE && this.plane.visible) {
@@ -967,7 +967,11 @@ export class App {
     this.plane.visible = showPlane;
     const planeOpacity = 1 - 0.8 * fade;
     this.planeMat.uniforms.uOpacity.value = planeOpacity;
-    const transparent = planeOpacity < 0.999;
+    this.planeGhost = planeOpacity < 0.999;
+    // hidden names fade out of the plane, so the selection's cross-section (and the blobs behind) stand out
+    const hiddenAlpha = this.anyHidden ? this.hiddenPlaneAlpha : 1;
+    this.planeMat.uniforms.uHiddenAlpha.value = hiddenAlpha;
+    const transparent = this.planeGhost || hiddenAlpha < 1;
     if (this.planeMat.transparent !== transparent) { this.planeMat.transparent = transparent; this.planeMat.needsUpdate = true; }
     this.planeMat.depthWrite = !transparent;
     this.outline.visible = this.outlineGhost.visible = showPlane && this.hasPolygon;
@@ -976,6 +980,10 @@ export class App {
     this.shared.uAssembled.value = this.backing.visible ? 1 : 0;
   }
   private hasPolygon = true;
+  /** alpha of the 3D plane's regions of hidden names, while some names are hidden */
+  hiddenPlaneAlpha = 0.15;
+  /** the plane is faded (exploded view): picks prefer blobs and the handle (see pick()) */
+  private planeGhost = false;
 
   private renderFrame() {
     const t0 = performance.now();
