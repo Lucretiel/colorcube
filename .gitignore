@@ -6,3 +6,4 @@ result
 .direnv/
 web/public/fake-assets/
 colorsurvey.tar.gz
+__pycache__/
