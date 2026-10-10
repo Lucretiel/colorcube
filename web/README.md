@@ -131,7 +131,8 @@ in linear light and converts back.
 
 **Soft borders.** The slice shader takes the 8 voxels around the sample point, sums trilinear weights
 per label and picks the label with the largest weight (a smooth majority vote that removes the
-voxel staircase); the default "Smooth" mode additionally averages a 3×3 in-plane tent of such samples.
+voxel staircase), averaged over a 3×3 in-plane tent of such samples one grid unit apart (wider spacing
+leaves gaps between the samples, and the borders come out stair-stepped).
 The margin between the best and second-best label (zero exactly on the border) and its analytic
 gradient give the distance to the border in screen pixels, so the white borders are a constant
 ~1.5 px wide and antialiased at any zoom or angle.

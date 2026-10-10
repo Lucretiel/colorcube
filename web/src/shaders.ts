@@ -222,7 +222,6 @@ precision highp usampler3D;
 uniform highp usampler3D uLabels;
 uniform sampler2D uNameMask;   // 256x1: r = visible, g = highlighted
 uniform float uBorderPx;       // white border width in device px
-uniform float uBlur;           // in-plane smoothing radius (grid units); 0 = trilinear majority only
 uniform float uOpacity;
 uniform float uDimHidden;
 uniform float uHiddenAlpha;    // alpha of hidden names' regions (3D plane: faded so the selection stands out)
@@ -269,15 +268,12 @@ void main() {
   vec3 dpx = dFdx(p), dpy = dFdy(p);
   if (any(lessThan(p, vec3(-0.01))) || any(greaterThan(p, vec3(256.01)))) discard;
   sn = 0;
-  if (uBlur > 0.0) {
-    // 3x3 in-plane tent kernel of trilinear samples
-    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-      float w = (2.0 - abs(float(i))) * (2.0 - abs(float(j))) / 16.0;
-      vec3 sp = clamp(p + (float(i) * vU + float(j) * vV) * uBlur, vec3(0.5), vec3(255.5));
-      accumulate(sp, w);
-    }
-  } else {
-    accumulate(p, 1.0);
+  // 3x3 in-plane tent kernel of trilinear samples, one grid unit apart. Wider spacing leaves gaps between
+  // the samples: the blurred weights then rise in steps as wide as the spacing, and borders stair-step.
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    float w = (2.0 - abs(float(i))) * (2.0 - abs(float(j))) / 16.0;
+    vec3 sp = clamp(p + float(i) * vU + float(j) * vV, vec3(0.5), vec3(255.5));
+    accumulate(sp, w);
   }
   int best = 0;
   for (int i = 1; i < 8; i++) { if (i >= sn) break; if (sw[i] > sw[best]) best = i; }

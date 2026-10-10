@@ -131,7 +131,6 @@ export class UI {
     $<HTMLInputElement>('slice-show').addEventListener('change', (e) => this.app.setShowSlice((e.target as HTMLInputElement).checked));
     $<HTMLInputElement>('slice-clip').addEventListener('change', (e) => this.app.setClip((e.target as HTMLInputElement).checked));
     $('slice-flip').addEventListener('click', () => this.app.flipClip());
-    $<HTMLSelectElement>('smooth').addEventListener('change', (e) => this.app.setBlur(+(e.target as HTMLSelectElement).value));
   }
 
   // ------------------------------------------------------------ legend

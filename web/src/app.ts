@@ -176,7 +176,6 @@ export class App {
       uLabels: this.shared.uLabels,
       uNameMask: { value: this.nameMask },
       uBorderPx: { value: 1.5 * this.renderer.getPixelRatio() },
-      uBlur: { value: 1 },
       uDimHidden: { value: 1 },
     };
 
@@ -363,7 +362,6 @@ export class App {
   setClip(on: boolean) { this.clipOn = on; this.emitState(); }
   flipClip() { this.clipSide = -this.clipSide; this.slice.setViewSign(this.clipSide); this.emitState(); }
   setShowSlice(on: boolean) { this.showSlice3D = on; this.emitState(); }
-  setBlur(v: number) { this.sliceUniforms.uBlur.value = v; this.map.invalidate(); this.dirty = true; this.emitState(); }
   setLabelsOn(on: boolean) { this.labelsOn = on; this.labels3dDirty = true; this.emitState(); }
   setSpin(on: boolean) { this.controls.autoRotate = on; this.emitState(); }
   resetCamera() {
