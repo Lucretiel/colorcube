@@ -47,8 +47,11 @@ async function run(browser, assets) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(String(e)));
   const url = `http://localhost:${PORT}/?assets=${assets}`;
+  // an exception during startup means the app never becomes ready: report it now, not after the timeout
+  const crashed = new Promise((_, rej) => page.once('pageerror', (e) => rej(new Error(`page error during startup: ${e.message}`))));
+  crashed.catch(() => {}); // later page errors are collected in `errors` instead
   await page.goto(url);
-  await page.waitForFunction(() => document.body.classList.contains('ready'), null, { timeout: 120000 });
+  await Promise.race([page.waitForFunction(() => document.body.classList.contains('ready'), null, { timeout: 120000 }), crashed]);
   await page.waitForFunction(() => window.__cc.app.map.labels.length > 0, null, { timeout: 30000 }).catch(() => fail('2D labels never appeared'));
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(SHOTS, `${tag}-01-initial.png`) });

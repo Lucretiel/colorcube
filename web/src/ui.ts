@@ -3,7 +3,12 @@ import { escapeHtml, type App } from './app';
 import type { LevelInfo } from './data';
 import type { Orientation } from './slice';
 
-const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+/** Element by id; throws on a missing id instead of returning a null typed as T. */
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing element #${id}`);
+  return el as T;
+};
 
 function store(key: string, value?: string): string | null {
   try {
