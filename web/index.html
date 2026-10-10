@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Color Name Cube</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 29 9v14L16 30 3 23V9z' fill='%23111'/%3E%3Cpath d='M16 2 29 9 16 16 3 9z' fill='%23ffef3a'/%3E%3Cpath d='M3 9l13 7v14L3 23z' fill='%23e8344a'/%3E%3Cpath d='M29 9 16 16v14l13-7z' fill='%233a8cff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="gl"></canvas>
+    <div id="labels3d" aria-hidden="true"></div>
+
+    <aside id="side" class="panel">
+      <header class="side-head">
+        <div>
+          <h1>Color Name Cube</h1>
+          <p class="sub">The most popular name for every color in the RGB cube, from the xkcd color survey.</p>
+        </div>
+        <button id="side-toggle" class="icon-btn" title="Collapse panel (P)" aria-label="Collapse panel">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </header>
+
+      <div class="side-scroll">
+        <section class="group">
+          <div class="row">
+            <label for="level" class="lbl">Detail</label>
+            <select id="level"></select>
+          </div>
+          <p id="level-desc" class="hint"></p>
+        </section>
+
+        <section class="group">
+          <h2>View</h2>
+          <div class="row slider-row">
+            <label for="explode" class="lbl">Explode <kbd>E</kbd></label>
+            <input id="explode" type="range" min="0" max="1" step="0.01" value="0" />
+            <output id="explode-out">0</output>
+          </div>
+          <div class="row slider-row">
+            <label for="shade" class="lbl">Shading <kbd>S</kbd></label>
+            <input id="shade" type="range" min="0" max="1" step="0.01" value="0.55" />
+            <output id="shade-out">0.55</output>
+          </div>
+          <div class="row toggles">
+            <label class="chk"><input id="labels-on" type="checkbox" checked /> Labels <kbd>L</kbd></label>
+            <label class="chk"><input id="spin" type="checkbox" /> Spin <kbd>A</kbd></label>
+            <button id="reset-cam" class="btn small" title="Reset camera (R)">Reset view</button>
+          </div>
+        </section>
+
+        <section class="group">
+          <h2>Slice</h2>
+          <div class="seg" id="orient" role="radiogroup" aria-label="Slice orientation">
+            <button data-o="r" title="Constant red (1)"><span class="dot" style="background:#ff3b3b"></span>R</button>
+            <button data-o="g" title="Constant green (2)"><span class="dot" style="background:#3bd14a"></span>G</button>
+            <button data-o="b" title="Constant blue (3)"><span class="dot" style="background:#3b7bff"></span>B</button>
+            <button data-o="gray" title="Constant R+G+B — perpendicular to the gray diagonal (4)"><span class="dot gray"></span>Gray</button>
+            <button data-o="free" title="Free rotation (5)"><span class="dot free"></span>Free</button>
+          </div>
+          <div class="row slider-row">
+            <label for="slice-pos" class="lbl" id="slice-pos-lbl">B</label>
+            <input id="slice-pos" type="range" min="0" max="255" step="1" value="128" />
+            <output id="slice-pos-out">128</output>
+          </div>
+          <div id="free-angles" class="free-angles" hidden>
+            <div class="row slider-row">
+              <label for="slice-az" class="lbl">Azimuth</label>
+              <input id="slice-az" type="range" min="-180" max="180" step="0.5" value="45" />
+              <output id="slice-az-out">45°</output>
+            </div>
+            <div class="row slider-row">
+              <label for="slice-el" class="lbl">Elevation</label>
+              <input id="slice-el" type="range" min="-90" max="90" step="0.5" value="35" />
+              <output id="slice-el-out">35°</output>
+            </div>
+          </div>
+          <div class="row toggles">
+            <label class="chk"><input id="slice-show" type="checkbox" checked /> In 3D <kbd>V</kbd></label>
+            <label class="chk"><input id="slice-clip" type="checkbox" checked /> Cut blobs <kbd>C</kbd></label>
+            <button id="slice-flip" class="btn small" title="Keep the other side (F)">Flip side</button>
+          </div>
+          <div class="row">
+            <label for="smooth" class="lbl">Borders</label>
+            <select id="smooth">
+              <option value="0">Crisp (trilinear majority)</option>
+              <option value="1" selected>Smooth (3×3 tent, 1 unit)</option>
+              <option value="2.5">Smoother (3×3 tent, 2.5 units)</option>
+            </select>
+          </div>
+          <p class="hint">Drag the plane (or its arrow handle) in the 3D view, use the slider, or <kbd>↑</kbd>/<kbd>↓</kbd> (<kbd>Shift</kbd> ×10).</p>
+        </section>
+
+        <section class="group legend-group">
+          <div class="legend-head">
+            <h2>Names <span id="name-count" class="count"></span></h2>
+            <button id="show-all" class="btn small" title="Show all (Esc)">Show all</button>
+          </div>
+          <input id="filter" type="search" placeholder="Filter names…  ( / )" autocomplete="off" spellcheck="false" />
+          <p class="hint">Click to solo · <kbd>Shift</kbd>-click to hide/show</p>
+          <ul id="legend" class="legend" role="listbox" aria-label="Color names"></ul>
+        </section>
+
+        <footer class="credits">
+          <button id="help-btn" class="btn small" title="Keyboard shortcuts (?)">Shortcuts ?</button>
+          <span>Data: <a href="https://blog.xkcd.com/2010/05/03/color-survey-results/" target="_blank" rel="noopener">xkcd color survey</a> (Randall Munroe, 2010)</span>
+        </footer>
+      </div>
+    </aside>
+    <button id="side-open" class="panel icon-btn floating" title="Show panel (P)" aria-label="Show panel" hidden>
+      <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+
+    <section id="map-panel" class="panel">
+      <div class="map-resize" id="map-resize" title="Drag to resize"></div>
+      <header class="map-head">
+        <div class="map-title"><span class="kicker">Slice</span> <span id="map-desc">B = 128</span></div>
+        <div class="map-tools">
+          <button id="map-download" class="icon-btn" title="Download PNG (D)" aria-label="Download PNG">
+            <svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="map-toggle" class="icon-btn" title="Hide map (M)" aria-label="Hide map">
+            <svg viewBox="0 0 24 24" width="17" height="17"><path d="M6 12h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="map-host" class="map-host"></div>
+      <footer class="map-foot">
+        <input id="map-pos" type="range" min="0" max="255" step="1" value="128" aria-label="Slice position" />
+        <span id="map-status" class="map-status"></span>
+      </footer>
+    </section>
+    <button id="map-open" class="panel btn floating-map" title="Show slice map (M)" hidden>Slice map</button>
+
+    <div id="tooltip" class="tooltip" hidden></div>
+
+    <div id="loading" class="loading">
+      <div class="loading-card">
+        <div class="cube-spinner" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div id="loading-text">Loading…</div>
+        <div class="bar"><div id="loading-bar"></div></div>
+      </div>
+    </div>
+
+    <div id="help" class="help" hidden>
+      <div class="help-card panel" role="dialog" aria-label="Keyboard shortcuts">
+        <header><h2>Keyboard &amp; mouse</h2><button id="help-close" class="icon-btn" aria-label="Close">✕</button></header>
+        <div class="help-grid">
+          <div><kbd>Drag</kbd> orbit · <kbd>Right-drag</kbd> pan · <kbd>Wheel</kbd> zoom</div>
+          <div><kbd>Drag plane</kbd> move slice along its normal</div>
+          <div><kbd>Click</kbd> blob / legend: solo that name (again = show all)</div>
+          <div><kbd>Shift</kbd>+<kbd>Click</kbd> hide / show a name</div>
+          <div><kbd>E</kbd> explode / collapse · <kbd>[</kbd> <kbd>]</kbd> explode less / more</div>
+          <div><kbd>1</kbd>–<kbd>5</kbd> slice orientation R · G · B · Gray · Free</div>
+          <div><kbd>↑</kbd> <kbd>↓</kbd> move slice (<kbd>Shift</kbd> ×10) · <kbd>←</kbd> <kbd>→</kbd> rotate free slice</div>
+          <div><kbd>V</kbd> slice in 3D · <kbd>C</kbd> cut blobs · <kbd>F</kbd> flip cut side</div>
+          <div><kbd>D</kbd> download map PNG</div>
+          <div><kbd>S</kbd> shading on/off · <kbd>L</kbd> labels · <kbd>A</kbd> spin · <kbd>R</kbd> reset view</div>
+          <div><kbd>P</kbd> side panel · <kbd>M</kbd> slice map · <kbd>/</kbd> filter names</div>
+          <div><kbd>Esc</kbd> show all names · <kbd>?</kbd> this help</div>
+          <div class="help-map"><kbd>Map</kbd>: wheel zoom · drag pan · double-click reset · click solo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

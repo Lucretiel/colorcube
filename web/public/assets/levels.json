@@ -1,0 +1,20 @@
+{
+ "default": "standard",
+ "levels": [
+  {
+   "id": "basic",
+   "title": "Basic (11 terms)",
+   "description": "The 11 Berlin\u2013Kay basic color terms. Every answer whose head word is a basic term counts for it (e.g. 'dark green', 'bluish green' and 'lime green' all count as green)."
+  },
+  {
+   "id": "standard",
+   "title": "Standard (28 names)",
+   "description": "The 36 most frequently given names (each given at least 13,559 times) plus the basic terms black and white \u2014 38 candidates, 28 of which win somewhere. Comparable to xkcd's 2D map."
+  },
+  {
+   "id": "detailed",
+   "title": "Detailed (39 names)",
+   "description": "Every name given at least 1,504 times (179 candidates) competes; 39 of them are the most popular name somewhere in the cube."
+  }
+ ]
+}

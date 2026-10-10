@@ -1,0 +1,27 @@
+{
+  "name": "colorcube-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "fake-assets": "node scripts/make-fake-assets.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "setup:browsers": "playwright install chromium-headless-shell",
+    "test": "CC_FAKE=1 npm run build && node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@fontsource/patrick-hand": "^5.3.0",
+    "three": "^0.186.1",
+    "xkcd-font": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "playwright": "^1.64.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}

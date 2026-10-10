@@ -1,0 +1,520 @@
+{
+ "level": "basic",
+ "resolution": 256,
+ "source": {
+  "answers": 3110453,
+  "users": 134597,
+  "sigma": 7.0,
+  "candidates": 11,
+  "minComponentVoxels": 1000,
+  "meshError": 0.1,
+  "notes": "xkcd color survey (Munroe 2010), main survey answers. Users with spamprob > 0.5 and self-reported color-blind users removed; names normalized (case, whitespace, grey->gray, hyphens/slashes, common misspellings). Per-name Gaussian KDE (sigma 7.0 voxels) over the 256^3 RGB grid; label = most popular name. Components smaller than 1000 voxels relabelled to the runner-up name."
+ },
+ "names": [
+  {
+   "name": "green",
+   "voxels": 4746436,
+   "fraction": 0.28291,
+   "answers": 669117,
+   "meanColor": [
+    90.26,
+    187.33,
+    81.34
+   ],
+   "centroid": [
+    90.756,
+    187.83,
+    81.839
+   ]
+  },
+  {
+   "name": "blue",
+   "voxels": 3879610,
+   "fraction": 0.231243,
+   "answers": 540701,
+   "meanColor": [
+    65.86,
+    125.62,
+    194.61
+   ],
+   "centroid": [
+    66.355,
+    126.116,
+    195.109
+   ]
+  },
+  {
+   "name": "purple",
+   "voxels": 2774582,
+   "fraction": 0.165378,
+   "answers": 349829,
+   "meanColor": [
+    144.9,
+    61.01,
+    170.42
+   ],
+   "centroid": [
+    145.395,
+    61.515,
+    170.925
+   ]
+  },
+  {
+   "name": "pink",
+   "voxels": 1690636,
+   "fraction": 0.10077,
+   "answers": 196640,
+   "meanColor": [
+    227.42,
+    94.51,
+    162.99
+   ],
+   "centroid": [
+    227.92,
+    95.009,
+    163.494
+   ]
+  },
+  {
+   "name": "brown",
+   "voxels": 1032565,
+   "fraction": 0.061546,
+   "answers": 119918,
+   "meanColor": [
+    146.97,
+    101.97,
+    54.03
+   ],
+   "centroid": [
+    147.475,
+    102.467,
+    54.534
+   ]
+  },
+  {
+   "name": "red",
+   "voxels": 778954,
+   "fraction": 0.046429,
+   "answers": 106094,
+   "meanColor": [
+    190.45,
+    36.33,
+    44.47
+   ],
+   "centroid": [
+    190.946,
+    36.829,
+    44.965
+   ]
+  },
+  {
+   "name": "orange",
+   "voxels": 619487,
+   "fraction": 0.036924,
+   "answers": 83102,
+   "meanColor": [
+    227.93,
+    126.53,
+    46.45
+   ],
+   "centroid": [
+    228.425,
+    127.029,
+    46.945
+   ]
+  },
+  {
+   "name": "yellow",
+   "voxels": 589572,
+   "fraction": 0.035141,
+   "answers": 76231,
+   "meanColor": [
+    226.98,
+    215.65,
+    66.1
+   ],
+   "centroid": [
+    227.484,
+    216.15,
+    66.597
+   ]
+  },
+  {
+   "name": "gray",
+   "voxels": 569915,
+   "fraction": 0.03397,
+   "answers": 91290,
+   "meanColor": [
+    148.53,
+    150.23,
+    145.79
+   ],
+   "centroid": [
+    149.029,
+    150.731,
+    146.292
+   ]
+  },
+  {
+   "name": "black",
+   "voxels": 64719,
+   "fraction": 0.003858,
+   "answers": 14223,
+   "meanColor": [
+    22.43,
+    20.11,
+    22.86
+   ],
+   "centroid": [
+    22.93,
+    20.606,
+    23.358
+   ]
+  },
+  {
+   "name": "white",
+   "voxels": 30740,
+   "fraction": 0.001832,
+   "answers": 6068,
+   "meanColor": [
+    242.93,
+    244.03,
+    223.05
+   ],
+   "centroid": [
+    243.433,
+    244.533,
+    223.55
+   ]
+  }
+ ],
+ "components": [
+  {
+   "nameIndex": 0,
+   "voxels": 4746436,
+   "centroid": [
+    90.756,
+    187.83,
+    81.839
+   ],
+   "bboxMin": [
+    0,
+    28,
+    0
+   ],
+   "bboxMax": [
+    238,
+    256,
+    229
+   ],
+   "firstVertex": 0,
+   "vertexCount": 2563,
+   "firstIndex": 0,
+   "indexCount": 15366,
+   "anchor": [
+    71.5,
+    184.5,
+    71.5
+   ],
+   "anchorDepth": 72.0
+  },
+  {
+   "nameIndex": 1,
+   "voxels": 3879610,
+   "centroid": [
+    66.355,
+    126.116,
+    195.109
+   ],
+   "bboxMin": [
+    0,
+    0,
+    35
+   ],
+   "bboxMax": [
+    238,
+    256,
+    256
+   ],
+   "firstVertex": 2563,
+   "vertexCount": 4191,
+   "firstIndex": 15366,
+   "indexCount": 25134,
+   "anchor": [
+    58.5,
+    130.5,
+    197.5
+   ],
+   "anchorDepth": 58.4
+  },
+  {
+   "nameIndex": 2,
+   "voxels": 2774582,
+   "centroid": [
+    145.395,
+    61.515,
+    170.925
+   ],
+   "bboxMin": [
+    24,
+    0,
+    21
+   ],
+   "bboxMax": [
+    233,
+    214,
+    256
+   ],
+   "firstVertex": 6754,
+   "vertexCount": 2755,
+   "firstIndex": 40500,
+   "indexCount": 16518,
+   "anchor": [
+    146.5,
+    56.5,
+    178.5
+   ],
+   "anchorDepth": 57.0
+  },
+  {
+   "nameIndex": 3,
+   "voxels": 1690636,
+   "centroid": [
+    227.92,
+    95.009,
+    163.494
+   ],
+   "bboxMin": [
+    161,
+    0,
+    77
+   ],
+   "bboxMax": [
+    256,
+    242,
+    256
+   ],
+   "firstVertex": 9509,
+   "vertexCount": 2095,
+   "firstIndex": 57018,
+   "indexCount": 12558,
+   "anchor": [
+    219.5,
+    107.5,
+    131.5
+   ],
+   "anchorDepth": 36.37
+  },
+  {
+   "nameIndex": 4,
+   "voxels": 1032565,
+   "centroid": [
+    147.475,
+    102.467,
+    54.534
+   ],
+   "bboxMin": [
+    36,
+    0,
+    0
+   ],
+   "bboxMax": [
+    242,
+    217,
+    168
+   ],
+   "firstVertex": 11604,
+   "vertexCount": 2745,
+   "firstIndex": 69576,
+   "indexCount": 16458,
+   "anchor": [
+    148.5,
+    91.5,
+    33.5
+   ],
+   "anchorDepth": 33.12
+  },
+  {
+   "nameIndex": 5,
+   "voxels": 778954,
+   "centroid": [
+    190.946,
+    36.829,
+    44.965
+   ],
+   "bboxMin": [
+    77,
+    0,
+    0
+   ],
+   "bboxMax": [
+    256,
+    114,
+    95
+   ],
+   "firstVertex": 14349,
+   "vertexCount": 1403,
+   "firstIndex": 86034,
+   "indexCount": 8406,
+   "anchor": [
+    197.5,
+    34.5,
+    45.5
+   ],
+   "anchorDepth": 34.45
+  },
+  {
+   "nameIndex": 6,
+   "voxels": 619487,
+   "centroid": [
+    228.425,
+    127.029,
+    46.945
+   ],
+   "bboxMin": [
+    171,
+    54,
+    0
+   ],
+   "bboxMax": [
+    256,
+    214,
+    156
+   ],
+   "firstVertex": 15752,
+   "vertexCount": 1342,
+   "firstIndex": 94440,
+   "indexCount": 8040,
+   "anchor": [
+    223.5,
+    104.5,
+    32.5
+   ],
+   "anchorDepth": 32.26
+  },
+  {
+   "nameIndex": 7,
+   "voxels": 589572,
+   "centroid": [
+    227.484,
+    216.15,
+    66.597
+   ],
+   "bboxMin": [
+    171,
+    149,
+    0
+   ],
+   "bboxMax": [
+    256,
+    256,
+    201
+   ],
+   "firstVertex": 17094,
+   "vertexCount": 1228,
+   "firstIndex": 102480,
+   "indexCount": 7356,
+   "anchor": [
+    227.5,
+    209.5,
+    28.5
+   ],
+   "anchorDepth": 28.62
+  },
+  {
+   "nameIndex": 8,
+   "voxels": 569915,
+   "centroid": [
+    149.029,
+    150.731,
+    146.292
+   ],
+   "bboxMin": [
+    31,
+    38,
+    35
+   ],
+   "bboxMax": [
+    241,
+    243,
+    256
+   ],
+   "firstVertex": 18322,
+   "vertexCount": 2764,
+   "firstIndex": 109836,
+   "indexCount": 16584,
+   "anchor": [
+    153.5,
+    161.5,
+    161.5
+   ],
+   "anchorDepth": 21.24
+  },
+  {
+   "nameIndex": 9,
+   "voxels": 64719,
+   "centroid": [
+    22.93,
+    20.606,
+    23.358
+   ],
+   "bboxMin": [
+    0,
+    0,
+    0
+   ],
+   "bboxMax": [
+    54,
+    48,
+    54
+   ],
+   "firstVertex": 21086,
+   "vertexCount": 523,
+   "firstIndex": 126420,
+   "indexCount": 3126,
+   "anchor": [
+    22.5,
+    17.5,
+    22.5
+   ],
+   "anchorDepth": 17.97
+  },
+  {
+   "nameIndex": 10,
+   "voxels": 30740,
+   "centroid": [
+    243.433,
+    244.533,
+    223.55
+   ],
+   "bboxMin": [
+    227,
+    222,
+    174
+   ],
+   "bboxMax": [
+    256,
+    256,
+    256
+   ],
+   "firstVertex": 21609,
+   "vertexCount": 575,
+   "firstIndex": 129546,
+   "indexCount": 3450,
+   "anchor": [
+    243.5,
+    245.5,
+    236.5
+   ],
+   "anchorDepth": 10.82
+  }
+ ],
+ "mesh": {
+  "file": "meshes.bin",
+  "vertexCount": 22184,
+  "indexCount": 132996,
+  "positionsByteOffset": 0,
+  "normalsByteOffset": 133104,
+  "indicesByteOffset": 221840
+ }
+}

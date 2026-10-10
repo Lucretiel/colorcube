@@ -1,0 +1,8 @@
+data/
+build/
+node_modules/
+dist/
+result
+.direnv/
+web/public/fake-assets/
+colorsurvey.tar.gz
