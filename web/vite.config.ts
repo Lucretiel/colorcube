@@ -15,7 +15,7 @@ const dropFakeAssets = (): Plugin => ({
 export default defineConfig({
   base: './',
   server: { port: 5173, strictPort: false },
-  build: { target: 'es2022', outDir: 'dist', assetsDir: 'static', chunkSizeWarningLimit: 1500 }, // assets/ is the data dir
+  build: { outDir: 'dist', assetsDir: 'static', chunkSizeWarningLimit: 1500 }, // assets/ is the data dir
   worker: { format: 'es' },
   plugins: [dropFakeAssets()],
 });
